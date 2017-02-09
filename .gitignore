@@ -23,4 +23,7 @@ project/plugins/project/
 .ensime_cache/
 .ensime
 
+*.iml
+.idea/
+
 # End of https://www.gitignore.io/api/scala

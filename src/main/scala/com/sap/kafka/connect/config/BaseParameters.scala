@@ -1,5 +1,7 @@
 package com.sap.kafka.connect.config
 
+import com.sap.kafka.client.hana.HANAConfigMissingException
+
 object BaseConfigConstants {
   val RECORD_KEY = "record_key"
   val RECORD_VALUE = "record_value"
@@ -25,7 +27,7 @@ trait BaseParameters {
 
 
     if (props.get("topics") == null) {
-      throw new IllegalArgumentException("Mandatory parameter missing: " +
+      throw new HANAConfigMissingException("Mandatory parameter missing: " +
         "A comma-separated list of topics is required to run the HANA-Kafka connectors")
     }
 
