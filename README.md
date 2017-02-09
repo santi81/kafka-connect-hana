@@ -59,16 +59,26 @@ kafka_source_1.table.name="SYSTEM"."com.sap.test::hello"
 ./bin/connect-standalone ./etc/schema-registry/connect-avro-standalone.properties ./etc/kafka/kafka-connect-hana-source.properties
 ```
 
+Distributed Mode
+================
+
+In a production environment, it is suggested to run the Kafka Connector on [distributed mode](http://docs.confluent.io/3.0.0/connect/userguide.html#distributed-mode)
+
 Configuration
 =============
 
 The `kafka connector for SAP Hana` provides a wide set of configuration options both for source & sink.
-The full list of default configuration options is documented [here](https://github.wdf.sap.corp/i033085/kafka-connect-hana/blob/master/Configuration.md). 
+The full list of default configuration options is documented [here](Configuration.md). 
 
 Examples
 ========
 
 The `unit tests` provide examples on every possible mode in which the connector can be configured.
+
+Credentials
+===========
+
+To access & test the Kafka connectors, [sample credentials](Credentials.md) are provided.
 
 Features
 ========

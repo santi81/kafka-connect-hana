@@ -22,5 +22,5 @@ This is a mandatory parameter.
 Example Configurations
 ======================
 
-- [Sink Connector Config](https://github.wdf.sap.corp/i033085/kafka-connect-hana/blob/master/config/kafka-connect-hana-sink.properties)
-- [Source Connector Config](https://github.wdf.sap.corp/i033085/kafka-connect-hana/blob/master/config/kafka-connect-hana-source.properties)
+- [Sink Connector Config](config/kafka-connect-hana-sink.properties)
+- [Source Connector Config](config/kafka-connect-hana-source.properties)

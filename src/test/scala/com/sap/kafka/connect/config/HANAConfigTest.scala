@@ -2,6 +2,7 @@ package com.sap.kafka.connect.config
 
 import java.util
 
+import com.sap.kafka.client.hana.HANAConfigMissingException
 import com.sap.kafka.connect.config.hana.HANAParameters
 import org.scalatest.FunSuite
 
@@ -63,7 +64,7 @@ class HANAConfigTest extends FunSuite {
     props.put("test-topic.table.name", "\"TEST\".\"TABLE\"")
 
     // connection.url missing
-    intercept[IllegalArgumentException] {
+    intercept[HANAConfigMissingException] {
       HANAParameters.getConfig(props)
     }
 
@@ -78,7 +79,7 @@ class HANAConfigTest extends FunSuite {
     props.put("test-topic.table.name", "\"TEST\".\"TABLE\"")
 
     // one of connection.user or connection.password missing
-    intercept[IllegalArgumentException] {
+    intercept[HANAConfigMissingException] {
       HANAParameters.getConfig(props)
     }
 
@@ -93,7 +94,7 @@ class HANAConfigTest extends FunSuite {
     props.put("test-topic.table.name", "\"TEST\".\"TABLE\"")
 
     // topics is missing
-    intercept[IllegalArgumentException] {
+    intercept[HANAConfigMissingException] {
       HANAParameters.getConfig(props)
     }
   }
@@ -111,7 +112,7 @@ class HANAConfigTest extends FunSuite {
 
     val config = HANAParameters.getConfig(props)
 
-    intercept[IllegalArgumentException] {
+    intercept[HANAConfigMissingException] {
       config.topicProperties("test-topic").get("table.name")
     }
   }
@@ -129,7 +130,7 @@ class HANAConfigTest extends FunSuite {
 
     val config = HANAParameters.getConfig(props)
 
-    intercept[IllegalArgumentException] {
+    intercept[HANAConfigMissingException] {
       config.topicProperties("test-topic").get("table.name")
     }
   }
