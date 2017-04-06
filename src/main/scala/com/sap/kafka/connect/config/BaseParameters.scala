@@ -8,6 +8,9 @@ object BaseConfigConstants {
 
   val TABLE_NAME_FORMAT = "\"(.+)\"\\.\"(.+)\"".r
 
+  val QUERY_MODE_TABLE = "table"
+  val QUERY_MODE_SQL = "query"
+
   val MODE_BULK = "bulk"
   val MODE_INCREMENTING = "incrementing"
 

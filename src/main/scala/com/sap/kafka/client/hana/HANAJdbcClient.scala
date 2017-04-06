@@ -108,6 +108,31 @@ case class HANAJdbcClient(hanaConfiguration: HANAConfig)  {
   }
 
   /**
+    * Retrieves query metadata.
+    *
+    * @param query The SQL Query string
+    * @return A sequence of [[metaAttr]] objects (JDBC representation of the schema)
+    */
+  def getMetadata(query: String): Seq[metaAttr] = {
+    ExecuteWithExceptions[Seq[metaAttr], Exception, HANAJdbcException](
+      new HANAJdbcException(s"Fetching of metadata for $query failed")) { () =>
+        val fullQueryForMetadata = query + " LIMIT 0"
+        WithCloseables(getConnection) { conn =>
+          WithCloseables(conn.createStatement()) { stmt =>
+            WithCloseables(stmt.executeQuery(fullQueryForMetadata)) { rs =>
+              val metadata = rs.getMetaData
+              val columnCount = metadata.getColumnCount
+              (1 to columnCount).map(col => metaAttr(
+                metadata.getColumnName(col), metadata.getColumnType(col),
+                metadata.isNullable(col), metadata.getPrecision(col),
+                metadata.getScale(col), metadata.isSigned(col)))
+            }
+          }
+        }
+      }
+  }
+
+  /**
    * Creates and loads a table in HANA.
    *
    * @param namespace (optional) The table namespace

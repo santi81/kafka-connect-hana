@@ -44,6 +44,11 @@ abstract class BaseConfig(props: Map[String, String]) {
   def batchMaxRows = props.getOrElse[String]("batch.max.rows", "100").toInt
 
   /**
+    * Query mode for polling data from table for source.
+    */
+  def queryMode = props.getOrElse[String]("queryMode", BaseConfigConstants.QUERY_MODE_TABLE)
+
+  /**
     * The mode for updating a table each time it is polled.
     * Default is 'bulk'.
     */
@@ -64,6 +69,13 @@ abstract class BaseConfig(props: Map[String, String]) {
         */
       if (key == s"$topic.table.name") {
         topicPropMap.put("table.name", value)
+      }
+
+      /**
+        * query to fetch from by source
+        */
+      if (key == s"$topic.query") {
+        topicPropMap.put("query", value)
       }
 
       /**

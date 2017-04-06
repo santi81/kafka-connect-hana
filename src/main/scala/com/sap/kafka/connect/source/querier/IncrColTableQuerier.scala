@@ -1,18 +1,18 @@
 package com.sap.kafka.connect.source.querier
 
 import com.sap.kafka.client.hana.HANAJdbcClient
-import com.sap.kafka.connect.config.BaseConfig
+import com.sap.kafka.connect.config.{BaseConfig, BaseConfigConstants}
 import com.sap.kafka.connect.source.SourceConnectorConstants
-import com.sap.kafka.connect.source.querier.QueryMode.QueryMode
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.source.SourceRecord
 
 import scala.collection.JavaConverters._
+import scala.util.Random
 
-class IncrColTableQuerier(mode: QueryMode, table: String, tablePartition: Int, topic: String,
+class IncrColTableQuerier(mode: String, tableOrQuery: String, tablePartition: Int, topic: String,
                           incrementingColumn: String, offsetMap: Map[String, Object],
                           config: BaseConfig, jdbcClient: Option[HANAJdbcClient])
-      extends TableQuerier(mode, table, topic, config, jdbcClient) {
+      extends TableQuerier(mode, tableOrQuery, topic, config, jdbcClient) {
 
   private var incrColumn: String = _
   private var incrColumnType: Int = java.sql.Types.INTEGER
@@ -29,12 +29,14 @@ class IncrColTableQuerier(mode: QueryMode, table: String, tablePartition: Int, t
     val builder = new StringBuilder()
 
     mode match {
-      case QueryMode.TABLE =>
+      case BaseConfigConstants.QUERY_MODE_TABLE =>
         if (tablePartition > 0) {
           builder.append(s"select * from $tableName PARTITION($tablePartition)")
         } else {
           builder.append(s"select * from $tableName")
         }
+      case BaseConfigConstants.QUERY_MODE_SQL =>
+        builder.append(query)
     }
 
     builder.append(" WHERE ")
@@ -59,9 +61,12 @@ class IncrColTableQuerier(mode: QueryMode, table: String, tablePartition: Int, t
         }
 
         mode match {
-          case QueryMode.TABLE =>
+          case BaseConfigConstants.QUERY_MODE_TABLE =>
             val partitionName = tableName + tablePartition.toString
             partition = Map(SourceConnectorConstants.TABLE_NAME_KEY -> partitionName)
+          case BaseConfigConstants.QUERY_MODE_SQL =>
+            val partitionName = "Query" + Random.nextInt()
+            partition = Map(SourceConnectorConstants.QUERY_NAME_KEY -> partitionName)
           case _ => throw new ConfigException(s"Unexpected Query Mode: $mode")
         }
         new SourceRecord(partition.asJava, offset.toMap(), topic,
@@ -71,11 +76,16 @@ class IncrColTableQuerier(mode: QueryMode, table: String, tablePartition: Int, t
   }
 
   override def toString: String = "IncrColTableQuerier{" +
-    "name='" + table + "'" +
+    "name='" + tableOrQuery + "'" +
     ", topic='" + topic + "'}"
 
   private def getIncrementingColumn(incrementingCol: String): String = {
-    val metadata = getOrCreateJdbcClient().get.getMetaData(table, None)
+    val metadata = mode match {
+      case BaseConfigConstants.QUERY_MODE_TABLE =>
+        getOrCreateJdbcClient().get.getMetaData(tableOrQuery, None)
+      case BaseConfigConstants.QUERY_MODE_SQL =>
+        getOrCreateJdbcClient().get.getMetadata(tableOrQuery)
+    }
 
     metadata.foreach(metaAttr => {
       if (metaAttr.name.equals(incrementingCol)) {

@@ -69,4 +69,7 @@ class HANASourceTask extends GenericSourceTask {
 
     tableInfos
   }
+
+  override protected def getQueries(queryTuple: List[(String, String)]): List[(String, Int, String, String)] =
+    queryTuple.map(query => (query._1, 0, null, query._2))
 }

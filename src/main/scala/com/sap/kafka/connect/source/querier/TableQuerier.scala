@@ -1,24 +1,22 @@
 package com.sap.kafka.connect.source.querier
 
 import com.sap.kafka.client.hana.HANAJdbcClient
-import com.sap.kafka.connect.config.BaseConfig
+import com.sap.kafka.connect.config.{BaseConfig, BaseConfigConstants}
 import com.sap.kafka.connect.config.hana.HANAConfig
-import com.sap.kafka.connect.source.querier.QueryMode.QueryMode
 import com.sap.kafka.utils.hana.HANAJdbcTypeConverter
 import org.apache.kafka.connect.data.{Schema, Struct}
 import org.apache.kafka.connect.source.SourceRecord
 import org.slf4j.LoggerFactory
 
-object QueryMode extends Enumeration {
-  type QueryMode = Value
-  val TABLE = Value
-}
+import scala.util.Random
 
-abstract class TableQuerier(mode: QueryMode, table: String,
+abstract class TableQuerier(mode: String, tableOrQuery: String,
                             topic: String, config: BaseConfig,
                             var jdbcClient: Option[HANAJdbcClient])
                 extends Comparable[TableQuerier] {
-  var tableName: String = if (mode.equals(QueryMode.TABLE)) table else null
+  var tableName: String = if (mode.equals(BaseConfigConstants.QUERY_MODE_TABLE)) tableOrQuery else null
+  var query: String = if (mode.equals(BaseConfigConstants.QUERY_MODE_SQL)) tableOrQuery else null
+
   var lastUpdate: Long = 0
   var schema: Schema = _
   var queryString: Option[String] = None
@@ -70,11 +68,23 @@ abstract class TableQuerier(mode: QueryMode, table: String,
   }
 
   private def getSchema(): Schema = {
-    if (getOrCreateJdbcClient().get.isInstanceOf[HANAJdbcClient]) {
-      val metadata = getOrCreateJdbcClient().get.getMetaData(table, None)
-      HANAJdbcTypeConverter.convertHANAMetadataToSchema(tableName, metadata)
-    } else {
-      throw new RuntimeException("Jdbc Client is not available")
+    mode match {
+      case BaseConfigConstants.QUERY_MODE_TABLE =>
+        if (getOrCreateJdbcClient().get.isInstanceOf[HANAJdbcClient]) {
+          val metadata = getOrCreateJdbcClient().get.getMetaData(tableOrQuery, None)
+          HANAJdbcTypeConverter.convertHANAMetadataToSchema(tableName, metadata)
+        } else {
+          throw new RuntimeException("Jdbc Client is not available")
+        }
+      case BaseConfigConstants.QUERY_MODE_SQL =>
+        if (getOrCreateJdbcClient().get.isInstanceOf[HANAJdbcClient]) {
+          val metadata = getOrCreateJdbcClient().get.getMetadata(tableOrQuery)
+          HANAJdbcTypeConverter.convertHANAMetadataToSchema("Query" + Random.nextInt, metadata)
+        } else {
+          throw new RuntimeException("Jdbc Client is not available")
+        }
+      case _ =>
+        throw new RuntimeException("Other Query modes are not supported")
     }
   }
 

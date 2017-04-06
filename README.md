@@ -113,6 +113,8 @@ The `kafka connector for SAP Hana` provides several configuration options out of
 
 `mode` - This setting can be used to specify the mode in which data should be fetched from SAP HANA table. Default is `bulk`. And supported values are `bulk, incrementing`.
 
+`queryMode` - This setting can be used to specify the query mode in which data should be fetched from SAP HANA table. Default is `table`. And supported values are `table, query ( to support sql queries )`.
+
 `{topic}.table.name` - This setting allows specifying the SAP Hana table name where the data needs to be written to. Should be a `String`. Must be compatible to SAP HANA Table name like `"SCHEMA"."TABLE"`.
 
 `{topic}.poll.interval.ms` - This setting allows specifying the poll interval at which the data should be fetched from SAP HANA table. Should be an `Integer`. Default value is `60000`.

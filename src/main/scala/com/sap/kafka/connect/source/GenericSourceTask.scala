@@ -5,8 +5,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import com.sap.kafka.client.hana.{HANAConfigMissingException, HANAJdbcClient}
 import com.sap.kafka.connect.config.hana.HANAParameters
-import com.sap.kafka.connect.config.{BaseConfig, BaseConfigConstants, BaseParameters}
-import com.sap.kafka.connect.source.querier.{BulkTableQuerier, IncrColTableQuerier, QueryMode, TableQuerier}
+import com.sap.kafka.connect.config.{BaseConfig, BaseConfigConstants}
+import com.sap.kafka.connect.source.querier.{BulkTableQuerier, IncrColTableQuerier, TableQuerier}
 import com.sap.kafka.utils.ExecuteWithExceptions
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.common.utils.{SystemTime, Time}
@@ -41,17 +41,31 @@ abstract class GenericSourceTask extends SourceTask {
 
     val topics = config.topics
 
-    val tables = topics.map(topic =>
-      (config.topicProperties(topic)("table.name"), topic))
+    var tables: List[(String, String)] = Nil
+    if (topics.forall(topic => config.topicProperties(topic).keySet.contains("table.name"))) {
+      tables = topics.map(topic =>
+        (config.topicProperties(topic)("table.name"), topic))
+    }
 
-    if (tables.isEmpty) {
+    var query: List[(String, String)] = Nil
+    if (topics.forall(topic => config.topicProperties(topic).keySet.contains("query"))) {
+      query = topics.map(topic =>
+        (config.topicProperties(topic)("query"), topic))
+    }
+
+    if (tables.isEmpty && query.isEmpty) {
       throw new ConnectException("Invalid configuration: each HANASourceTask must have" +
         " one table assigned to it")
     }
 
-    // default the query mode to table.
-    val queryMode = QueryMode.TABLE
-    val tableInfos = getTables(tables)
+    val queryMode = config.queryMode
+
+    val tableOrQueryInfos = queryMode match {
+                              case BaseConfigConstants.QUERY_MODE_TABLE =>
+                                getTables(tables)
+                              case BaseConfigConstants.QUERY_MODE_SQL =>
+                                getQueries(query)
+                            }
 
     val mode = config.mode
     var offsets: util.Map[util.Map[String, String], util.Map[String, Object]] = null
@@ -62,36 +76,46 @@ abstract class GenericSourceTask extends SourceTask {
         new util.ArrayList[util.Map[String, String]](tables.length)
 
       queryMode match {
-        case QueryMode.TABLE =>
-          tableInfos.foreach(tableInfo => {
+        case BaseConfigConstants.QUERY_MODE_TABLE =>
+          tableOrQueryInfos.foreach(tableInfo => {
             val partition = new util.HashMap[String, String]()
             partition.put(SourceConnectorConstants.TABLE_NAME_KEY, tableInfo._3)
             partitions.add(partition)
             incrementingCols :+= config.topicProperties(tableInfo._4)("incrementing.column.name")
           })
+        case BaseConfigConstants.QUERY_MODE_SQL =>
+          tableOrQueryInfos.foreach(queryInfo => {
+            val partition = new util.HashMap[String, String]()
+            partition.put(SourceConnectorConstants.QUERY_NAME_KEY, queryInfo._1)
+            partitions.add(partition)
+            incrementingCols :+= config.topicProperties(queryInfo._4)("incrementing.column.name")
+          })
+
       }
       offsets = context.offsetStorageReader().offsets(partitions)
     }
 
     var count = 0
-    tableInfos.foreach(tableInfo => {
+    tableOrQueryInfos.foreach(tableOrQueryInfo => {
       val partition = new util.HashMap[String, String]()
       queryMode match {
-        case QueryMode.TABLE =>
-          partition.put(SourceConnectorConstants.TABLE_NAME_KEY, tableInfo._3)
+        case BaseConfigConstants.QUERY_MODE_TABLE =>
+          partition.put(SourceConnectorConstants.TABLE_NAME_KEY, tableOrQueryInfo._3)
+        case BaseConfigConstants.QUERY_MODE_SQL =>
+          partition.put(SourceConnectorConstants.QUERY_NAME_KEY, tableOrQueryInfo._1)
         case _ =>
           throw new ConfigException(s"Unexpected Query Mode: $queryMode")
       }
 
       val offset = if (offsets == null) null else offsets.get(partition)
 
-      val topic = tableInfo._4
+      val topic = tableOrQueryInfo._4
 
       if (mode.equals(BaseConfigConstants.MODE_BULK)) {
-        tableQueue += new BulkTableQuerier(queryMode, tableInfo._1, tableInfo._2, topic,
+        tableQueue += new BulkTableQuerier(queryMode, tableOrQueryInfo._1, tableOrQueryInfo._2, topic,
           config, Some(jdbcClient))
       } else if (mode.equals(BaseConfigConstants.MODE_INCREMENTING)) {
-        tableQueue += new IncrColTableQuerier(queryMode, tableInfo._1, tableInfo._2, topic,
+        tableQueue += new IncrColTableQuerier(queryMode, tableOrQueryInfo._1, tableOrQueryInfo._2, topic,
           incrementingCols(count),
           if (offset == null) null else offset.asScala.toMap,
           config, Some(jdbcClient))
@@ -158,6 +182,9 @@ abstract class GenericSourceTask extends SourceTask {
   }
 
   protected def getTables(tables: List[Tuple2[String, String]])
+  : List[Tuple4[String, Int, String, String]]
+
+  protected def getQueries(query: List[(String, String)])
   : List[Tuple4[String, Int, String, String]]
 
   protected def createJdbcClient(): HANAJdbcClient

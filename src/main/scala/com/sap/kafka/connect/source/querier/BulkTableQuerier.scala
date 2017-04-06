@@ -1,25 +1,26 @@
 package com.sap.kafka.connect.source.querier
 
 import com.sap.kafka.client.hana.HANAJdbcClient
-import com.sap.kafka.connect.config.BaseConfig
+import com.sap.kafka.connect.config.{BaseConfig, BaseConfigConstants}
 import com.sap.kafka.connect.source.SourceConnectorConstants
-import com.sap.kafka.connect.source.querier.QueryMode.QueryMode
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.source.SourceRecord
 
 import scala.collection.JavaConverters._
 
-class BulkTableQuerier(mode: QueryMode, table: String, tablePartition: Int, topic: String,
+class BulkTableQuerier(mode: String, tableOrQuery: String, tablePartition: Int, topic: String,
                        config: BaseConfig, jdbcClient: Option[HANAJdbcClient])
-  extends TableQuerier(mode, table, topic, config, jdbcClient) {
+  extends TableQuerier(mode, tableOrQuery, topic, config, jdbcClient) {
   override def createQueryString(): Unit = {
     mode match {
-      case QueryMode.TABLE =>
+      case BaseConfigConstants.QUERY_MODE_TABLE =>
         if (tablePartition > 0) {
           queryString = Some(s"select * from $tableName PARTITION($tablePartition)")
         } else {
           queryString = Some(s"select * from $tableName")
         }
+      case BaseConfigConstants.QUERY_MODE_SQL =>
+        queryString = Some(query)
     }
   }
 
@@ -29,7 +30,7 @@ class BulkTableQuerier(mode: QueryMode, table: String, tablePartition: Int, topi
         var partition: Map[String, String] = null
 
         mode match {
-          case QueryMode.TABLE =>
+          case BaseConfigConstants.QUERY_MODE_TABLE =>
             partition = Map(SourceConnectorConstants.TABLE_NAME_KEY -> tableName)
           case _ => throw new ConfigException(s"Unexpected query mode: $mode")
         }
@@ -41,7 +42,7 @@ class BulkTableQuerier(mode: QueryMode, table: String, tablePartition: Int, topi
   }
 
   override def toString: String = "BulkTableQuerier{" +
-    "name='" + table + '\'' +
+    "name='" + tableOrQuery + '\'' +
     ", topic='" + topic + '\'' +
     '}'
 
