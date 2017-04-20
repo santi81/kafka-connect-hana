@@ -75,11 +75,6 @@ Examples
 
 The `unit tests` provide examples on every possible mode in which the connector can be configured.
 
-Credentials
-===========
-
-To access & test the Kafka connectors, [sample credentials](Credentials.md) are provided.
-
 Features
 ========
 
