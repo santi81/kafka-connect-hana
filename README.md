@@ -6,9 +6,9 @@ Table of contents
 -------------
 
 * [Install](#install)
-* [QuickStart](#quickStart)
-* [Configuration](#Configuration)
-* [Examples](#Examples)
+* [QuickStart](#quickstart)
+* [Configuration](#configuration)
+* [Examples](#examples)
 
 
 ## Install
